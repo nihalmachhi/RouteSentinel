@@ -2,9 +2,11 @@ import hmac
 import os
 from enum import IntEnum
 
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+load_dotenv()
 
 class Role(IntEnum):
     viewer = 1
@@ -41,3 +43,5 @@ def require_role(required: Role):
         return role
 
     return check
+
+

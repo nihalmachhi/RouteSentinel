@@ -41,6 +41,14 @@ def detect(event: RouteEvent, assets: list[Asset]) -> list[dict]:
         findings.append(
             ("rpki-invalid", "critical", "Route Origin Validation reports this route as invalid")
         )
+    elif event.roa_status == "unknown":
+        findings.append(
+            (
+                "rpki-unknown",
+                "medium",
+                "No validated Route Origin Authorization is known for this route",
+            )
+        )
     if len(event.as_path) > 32:
         findings.append(
             ("long-as-path", "medium", "AS path exceeds the configured anomaly threshold")
