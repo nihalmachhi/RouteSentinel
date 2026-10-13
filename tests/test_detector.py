@@ -27,3 +27,9 @@ def test_unknown_origin_subprefix_is_alerted():
     findings = detect(event("203.0.113.0/25", 64599, "unknown"), [ASSET])
     assert "unexpected-subprefix" in {item["kind"] for item in findings}
     assert "unexpected-origin" in {item["kind"] for item in findings}
+
+
+def test_unknown_roa_status_is_reported_for_review():
+    findings = detect(event("203.0.113.0/24", 64500, "unknown"), [ASSET])
+    assert [finding["kind"] for finding in findings] == ["rpki-unknown"]
+    assert findings[0]["severity"] == "medium"
