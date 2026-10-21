@@ -1,11 +1,58 @@
-import React,{useState}from"react";
-import{createRoot}from"react-dom/client";
-import{BrowserRouter,Link,Route,Routes}from"react-router-dom";
-import"./style.css";
-const sample={events:[{timestamp:new Date().toISOString(),prefix:"203.0.113.0/24",origin_as:64599,as_path:[64501,64599],roa_status:"invalid",feed:"offline-demo"}]};
-function App(){const[token,setToken]=useState("");const[input,setInput]=useState(JSON.stringify(sample,null,2));const[alerts,setAlerts]=useState([]);const[status,setStatus]=useState("Offline fixture mode");const[error,setError]=useState("");
-async function addDemo(){setError("");try{const response=await fetch("http://127.0.0.1:8020/api/v1/assets",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({prefix:"203.0.113.0/24",expected_origins:[64500],anycast_origins:[64501],label:"Demo protected service"})});const body=await response.json();if(!response.ok)throw Error(body.detail||"Asset creation failed");setStatus("Demo asset ready: "+body.prefix)}catch(e){setError(e.message)}}
-async function replay(){setError("");try{const response=await fetch("http://127.0.0.1:8020/api/v1/replay",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:input});const data=await response.json();if(!response.ok)throw Error(data.detail||"Replay failed");setAlerts(data.results.flatMap(item=>item.alerts));setStatus(data.events_processed+" route events · "+data.alert_count+" findings")}catch(e){setError(e.message)}}
-return <BrowserRouter><main><header><Link to="/" className="brand">RS <span>ROUTESENTINEL</span></Link><small>PASSIVE ROUTE INTEGRITY</small></header><nav><Link to="/">Overview</Link><Link to="/method">Detection method</Link></nav><Routes><Route path="/" element={<><section className="hero"><small>ROUTE INTELLIGENCE · OFFLINE REPLAY</small><h1>Know when a route<br/><em>doesn’t belong.</em></h1><p>Review BGP announcements against protected prefixes, origin allowlists and RPKI status.</p></section><section className="metrics"><article><small>FEED MODE</small><b>Offline JSON replay</b></article><article><small>CONTROL PLANE</small><b>Passive only</b></article><article><small>SESSION</small><b>{status}</b></article></section><section className="grid"><div><h2>Replay route events</h2><label>Operator token<input type="password" value={token} onChange={e=>setToken(e.target.value)} placeholder="local-operator-token"/></label><button className="secondary" onClick={addDemo}>Add demo asset baseline</button><label>Route event batch · JSON<textarea value={input} onChange={e=>setInput(e.target.value)}/></label><button onClick={replay}>Analyze announcements</button>{error&&<p className="error">{error}</p>}</div><aside><small>DETECTIONS</small><h2>{alerts.length?alerts.length+" findings":"No current findings"}</h2>{alerts.length?alerts.map((a,i)=><article key={i}><span className={"severity "+a.severity}>{a.severity}</span><b>{a.kind.replaceAll("-"," ")}</b><p>{a.message}</p><code>{a.prefix} · AS{a.origin_as} · {Math.round(a.confidence*100)}% confidence</code><p className="action">{a.suggested_action}</p></article>):<div className="empty">Add the demo asset baseline, then replay the sample route events.</div>}<p className="note">Alerts suggest review only. The system never announces or withdraws routes.</p></aside></section></>}/><Route path="/method" element={<section className="hero"><small>DETECTION MODEL</small><h1>Every alert has<br/><em>route evidence.</em></h1><p>For each configured asset, the detector checks unexpected origins, more-specific prefixes, invalid RPKI status, unusually long paths, and non-public bogon ranges. Alerts retain the observed path, feed label, timestamp, and confidence.</p><p>Current mode replays local JSON only. RIS Live, MRT ingestion, relationship feeds, and automatic monitoring are not connected.</p></section>}/></Routes><footer>RouteSentinel <span>Passive monitor · No BGP sessions or network actions</span></footer></main></BrowserRouter>}
-createRoot(document.getElementById("root")).render(<App/>);
+import React, { useState } from "react";
+import { createRoot } from "react-dom/client";
+import "./style.css";
 
+const PATHS = { assets: "/api/v1/assets", replay: "/api/v1/replay" };
+const examples = {
+  invalid: { label: "Invalid origin", prefix: "203.0.113.0/24", origin: 64599, status: "Invalid", finding: "RPKI origin validation failed", severity: "High", path: [64501, 64599] },
+  allowed: { label: "Expected origin", prefix: "203.0.113.0/24", origin: 64500, status: "Valid", finding: "No policy finding", severity: "Clear", path: [64501, 64500] },
+  subprefix: { label: "Unexpected subprefix", prefix: "203.0.113.128/25", origin: 64550, status: "Unknown", finding: "More-specific route announced", severity: "Medium", path: [64501, 64550] },
+};
+
+function App() {
+  const [kind, setKind] = useState("invalid");
+  const [token, setToken] = useState("");
+  const [message, setMessage] = useState("");
+  const [assets, setAssets] = useState([]);
+  const route = examples[kind];
+
+  async function replay() {
+    setMessage("Connecting to local RouteSentinel API…");
+    try {
+      const response = await fetch(`http://127.0.0.1:8020${PATHS.replay}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ events: [{ timestamp: new Date().toISOString(), prefix: route.prefix, origin_as: route.origin, as_path: route.path, roa_status: route.status.toLowerCase(), feed: "dashboard-demo" }] }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || `API returned ${response.status}`);
+      setMessage(`Live replay processed ${data.events_processed} event${data.events_processed === 1 ? "" : "s"}; ${data.alert_count} finding${data.alert_count === 1 ? "" : "s"}.`);
+    } catch (error) {
+      setMessage(`${error.message}. The route finding shown is local example data.`);
+    }
+  }
+
+  async function loadAssets() {
+    try {
+      const response = await fetch(`http://127.0.0.1:8020${PATHS.assets}`, { headers: { Authorization: `Bearer ${token}` } });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.detail || `API returned ${response.status}`);
+      setAssets(body);
+      setMessage(`${body.length} protected asset${body.length === 1 ? "" : "s"} loaded from local API.`);
+    } catch (error) { setMessage(`${error.message}. Demo data remains available.`); }
+  }
+
+  return <main>
+    <header><a className="brand" href="#top"><span className="mark">RS</span> RouteSentinel</a><span className="eyebrow">PASSIVE ROUTE INTEGRITY</span><a href="#method">Detection</a></header>
+    <section className="hero" id="top"><p className="eyebrow">BGP EVENT REVIEW · OFFLINE REPLAY</p><h1>See the route.<br/><em>Understand the alert.</em></h1><p>Inspect route evidence against a protected prefix and known origins. Findings recommend review; they never change routing.</p></section>
+    <section className="workspace" aria-label="Route event analysis">
+      <div className="panel observation"><div className="panel-head"><div><p className="eyebrow">01 / OBSERVED ROUTE</p><h2>Choose a route event</h2></div><span className="pill">Demo fixture</span></div>
+        <div className="scenarios" role="group" aria-label="Example route scenarios">{Object.entries(examples).map(([key, value]) => <button key={key} onClick={() => setKind(key)} aria-pressed={kind === key} className={kind === key ? "selected" : ""}>{value.label}</button>)}</div>
+        <div className="route"><div><span>ANNOUNCED PREFIX</span><b>{route.prefix}</b></div><div><span>ORIGIN AS</span><b>AS{route.origin}</b></div><div><span>ROA STATUS</span><b className={`state ${route.status.toLowerCase()}`}>{route.status}</b></div></div>
+        <p className="eyebrow path-label">AS PATH · OBSERVED</p><div className="path">{route.path.map((asn, index) => <span key={`${asn}-${index}`}><b>AS{asn}</b>{index < route.path.length - 1 && <i aria-hidden="true">→</i>}</span>)}</div>
+        <button className="button" onClick={replay}>Replay through local API</button>{message && <p className="notice" role="status">{message}</p>}
+      </div>
+      <aside className={`panel finding ${route.severity.toLowerCase()}`} aria-live="polite"><p className="eyebrow">02 / POLICY REVIEW</p><div className="verdict"><span className="status-dot"/><h2>{route.finding}</h2></div><span className="severity">{route.severity} · Example finding</span><div className="evidence"><span>Evidence</span><b>{route.prefix} announced by AS{route.origin}</b><span>Origin validation</span><b>{route.status} against configured route policy</b></div><p className="footnote">Review the feed and configured asset baseline before acting. No BGP session, announce, or withdrawal is performed.</p></aside>
+    </section>
+    <section className="connection" id="method"><div><p className="eyebrow">HOW DETECTION WORKS</p><h2>Validate, compare, explain</h2><p>Offline replay checks origins, more-specific prefixes, and RPKI status. Live feeds and automatic mitigation are not connected.</p></div><div className="connect-controls"><label>Optional operator token<input type="password" value={token} onChange={event => setToken(event.target.value)} placeholder="local operator token" autoComplete="off"/></label><button className="button secondary" onClick={loadAssets}>Load protected assets</button><span className="subtle" role="status">{assets.length ? `${assets.length} assets loaded` : "Local demo mode"}</span></div></section>
+    <footer>RouteSentinel <span>Passive review · No route changes</span></footer>
+  </main>;
+}
+
+createRoot(document.getElementById("root")).render(<App/>);
