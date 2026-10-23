@@ -2,7 +2,7 @@
   <img src="assets/readme-icon.png" alt="RouteSentinel icon" width="112" />
 </p>
 
-# RouteSentinel
+<h1 align="center">RouteSentinel</h1>
 
 RouteSentinel replays offline BGP route events against protected-prefix origin baselines and reports suspicious announcements with evidence.
 
