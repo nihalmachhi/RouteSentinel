@@ -12,6 +12,22 @@ RouteSentinel replays offline BGP route events against protected-prefix origin b
 
 Add a monitored asset before replay. The dashboard offers a demo asset using the documentation prefix 203.0.113.0/24. For real assets, use POST /api/v1/assets with the operator token and your verified prefix/allowed origins.
 
+## How it works
+
+RouteSentinel replays offline BGP route observations against an operator-configured protected-prefix and origin baseline.
+
+```mermaid
+flowchart LR
+  A[Offline route-event JSON] --> B[Validate event and prefix]
+  B --> C[Match protected asset baseline]
+  C --> D[Origin, subprefix, RPKI, path, and bogon checks]
+  D --> E[Evidence-linked findings]
+  E --> F[SQLite observations and alerts]
+  F --> G[Role-checked API and dashboard]
+```
+
+Each finding retains the observed route details and a review suggestion. The demo uses documentation-only address space. There are no live route feeds or BGP sessions, and the application cannot announce, withdraw, or mitigate routes.
+
 ## Run locally
 
 Requires Python 3.11+ and Node.js 20+.
@@ -41,4 +57,5 @@ npm --prefix dashboard run build
 ~~~
 
 SQLite data resides in ignored data/. Events are stored as route observations and generated findings.
+
 
