@@ -21,13 +21,17 @@ Add a monitored asset before replay. The dashboard offers a demo asset using the
 RouteSentinel replays offline BGP route observations against an operator-configured protected-prefix and origin baseline.
 
 ```mermaid
-flowchart LR
+flowchart TD
   A[Offline route-event JSON] --> B[Validate event and prefix]
-  B --> C[Match protected asset baseline]
-  C --> D[Origin, subprefix, RPKI, path, and bogon checks]
-  D --> E[Evidence-linked findings]
-  E --> F[SQLite observations and alerts]
-  F --> G[Role-checked API and dashboard]
+  B --> C[Match configured protected asset]
+  C --> D[Compare route with origin baseline]
+  D --> E[Check subprefix, RPKI, AS path, and bogon rules]
+  E --> F[Evidence-linked finding and review suggestion]
+  F --> G[(SQLite observations and alerts)]
+  G --> H[Viewer, operator, or admin route checks]
+  H --> I[API and dashboard]
+  I -. alert only .-> J[Human review]
+  J -. no announce, withdraw, or mitigation .-> K[Live routing remains untouched]
 ```
 
 Each finding retains the observed route details and a review suggestion. The demo uses documentation-only address space. There are no live route feeds or BGP sessions, and the application cannot announce, withdraw, or mitigate routes.
