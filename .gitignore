@@ -6,7 +6,7 @@ __pycache__/
 .env
 .env.*
 !.env.example
-data/
+/data/
 dashboard/node_modules/
 dashboard/dist/
 dashboard/coverage/
