@@ -9,4 +9,7 @@ __pycache__/
 data/
 dashboard/node_modules/
 dashboard/dist/
+dashboard/coverage/
+dashboard/playwright-report/
+dashboard/test-results/
 
